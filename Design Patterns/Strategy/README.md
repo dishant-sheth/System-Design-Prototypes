@@ -7,4 +7,6 @@ We are building a payment processing system that supports multiple payment metho
 
 Each method has a different processing flow, but the checkout service should not care which one is being used.
 
+Using the Strategy pattern here -
+
 ![Class Diagram](assets/ClassDiagram.png)
