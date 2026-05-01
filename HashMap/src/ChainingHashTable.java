@@ -1,12 +1,12 @@
 package src;
 
 @SuppressWarnings("unchecked")
-class ChainingHashTable<Key, Value> implements IMap<Key, Value> {
+public class ChainingHashTable<Key, Value> implements IMap<Key, Value> {
 
     private class Node {
 
         private final Key key;
-        private final Value value;
+        private Value value;
         private final int keyHash;
         public Node next;
 
@@ -29,9 +29,10 @@ class ChainingHashTable<Key, Value> implements IMap<Key, Value> {
         }
     }
 
-    private final double INCREASE_SIZE_LOAD_THRESHOLD = 0.5;
-    private final double DECREASE_SIZE_LOAD_THRESHOLD = 0.125;
+    private final double INCREASE_SIZE_LOAD_THRESHOLD = 0.75;
+    private final double DECREASE_SIZE_LOAD_THRESHOLD = 0.25;
     private final int DEFAULT_CAPACITY = 8;
+    private final int MINIMUM_CAPACITY = 8;
     private int capacity, size;
     private Object[] hashTable;
 
@@ -79,24 +80,42 @@ class ChainingHashTable<Key, Value> implements IMap<Key, Value> {
         for(int i=0; i<this.capacity; ++i){
             this.hashTable[i] = null;
         }
+        this.size = 0;
     }
 
     @Override
     public Value put(Key k, Value v){
+        Value returnVal = null;
         final int keyHash = k.hashCode();
         // Get index to place at.
         final int putIdx = getIdxFromHash(keyHash);
+        boolean valueUpdated = false;
+
         if(hashTable[putIdx] == null){
             hashTable[putIdx] = new Node(k, v, keyHash);
         }
         else {
-            // Prepend to the head of the array.
-            Node newNode = new Node(k, v, keyHash);
-            newNode.next = (Node) hashTable[putIdx];
-            hashTable[putIdx] = newNode;
+            // Check if LL already has key.
+            Node headNode = (Node) hashTable[putIdx];
+            while(headNode != null){
+                if(k.equals(headNode.key)){
+                    valueUpdated = true;
+                    returnVal = headNode.value;
+                    headNode.value = v;
+                    break;
+                }
+                headNode = headNode.next;
+            }
+
+            if(!valueUpdated){
+                // Prepend to the head of the array.
+                Node newNode = new Node(k, v, keyHash);
+                newNode.next = (Node) hashTable[putIdx];
+                hashTable[putIdx] = newNode;
+            }
         }
 
-        size += 1;
+        if(!valueUpdated) size += 1;
 
         // Check if resize is needed.
         final double load = size/(capacity*1.0);
@@ -104,7 +123,7 @@ class ChainingHashTable<Key, Value> implements IMap<Key, Value> {
             resize(this.capacity * 2);
         }
 
-        return v;
+        return returnVal;
     }
 
     @Override
@@ -132,6 +151,7 @@ class ChainingHashTable<Key, Value> implements IMap<Key, Value> {
         Value returnVal = null;
         Node headNode = (Node) hashTable[deleteIdx];
         Node prev = null;
+        boolean nodeFound = false;
         while(headNode != null){
             // Found it, delete.
             if(k.equals(headNode.key)){
@@ -142,11 +162,14 @@ class ChainingHashTable<Key, Value> implements IMap<Key, Value> {
                 } else {
                     prev.next = headNode.next;
                 }
+                nodeFound = true;
                 break;
             }
             prev = headNode;
             headNode = headNode.next;
         }
+
+        if(!nodeFound) return null;
 
         // Calculate load factors and check if we need to resize.
         this.size -= 1;
@@ -158,9 +181,12 @@ class ChainingHashTable<Key, Value> implements IMap<Key, Value> {
         return returnVal;
     }
 
-    private void resize(int newCapacity){
-        // 
-        System.out.println("Resize to " + newCapacity);
+    private void resize(int newCapacity){ 
+        if(newCapacity < MINIMUM_CAPACITY){
+            //System.out.println("Will not resize. Minimum capacity is " + MINIMUM_CAPACITY);
+            return;
+        }
+        //System.out.println("Resize to " + newCapacity);
         Object[] resizedHashTable = new Object[newCapacity];
         for(int i=0; i<this.capacity; ++i){
             if(hashTable[i] == null) continue;
@@ -197,7 +223,7 @@ class ChainingHashTable<Key, Value> implements IMap<Key, Value> {
 
     private int getIdxFromHash(int hash, int size){
         // size is guaranteed to be a power of 2.
-        return hash & (size - 1);
+        return (hash & 0xFFFFFFFF) & (size - 1);
     }
     
 }
