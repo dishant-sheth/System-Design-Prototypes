@@ -12,6 +12,4 @@ public class ParseResult{
         this.disputes = disputes;
         this.invalidLines = invalidLines;
     }
-
-
 }

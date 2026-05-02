@@ -1,5 +1,6 @@
 package src;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import src.interfaces.IEventParser;
@@ -9,6 +10,9 @@ public class TransactionParser implements IEventParser {
 
     private final String CHARGE = "CHARGE";
     private final String DISPUTE = "DISPUTE";
+
+    private static final ChargeEventValidator CHARGE_VALIDATOR = new ChargeEventValidator();
+    private static final DisputeEventValidator DISPUTE_VALIDATOR = new DisputeEventValidator();
 
     @Override
     public ParseResult parse(List<String> rawLines){
@@ -28,7 +32,6 @@ public class TransactionParser implements IEventParser {
                 case CHARGE -> {
                     // Needs atleast 6 parts.
                     if(logParts.length >= 6){
-                        System.out.println("Processing CHARGE");
                         // Txn ID
                         idxToParse = getNextValidPart(idxToParse + 1, logParts);
                         final String txnId = getPart(idxToParse, logParts);
@@ -40,7 +43,7 @@ public class TransactionParser implements IEventParser {
                         final String currency = getPart(idxToParse, logParts);
                         // Amount
                         idxToParse = getNextValidPart(idxToParse + 1, logParts);
-                        final String amount = getPart(idxToParse, logParts);
+                        final BigDecimal amount =  new BigDecimal(getPart(idxToParse, logParts));
                         // Timestamp
                         idxToParse = getNextValidPart(idxToParse + 1, logParts);
                         final String timestamp = getPart(idxToParse, logParts);
@@ -58,17 +61,19 @@ public class TransactionParser implements IEventParser {
                             .timestamp(timestamp)
                             .build();
 
-                            if(event != null){
+                            EventValidatorResult result = CHARGE_VALIDATOR.validate(event);
+                            if(result.isValid()) {
                                 charges.add(event);
+                                System.out.println("CHARGE processed successfully");
                                 continue;
                             }
+                            System.out.println("[ERROR] " + result.validationErrors());
                         }
                     }
                     invalidLines.add(line);
                 }
                 case DISPUTE -> {
                     if(logParts.length >= 5){
-                        System.out.println("Processing DISPUTE");
                         // Txn ID
                         idxToParse = getNextValidPart(idxToParse + 1, logParts);
                         final String txnId = getPart(idxToParse, logParts);
@@ -93,10 +98,13 @@ public class TransactionParser implements IEventParser {
                             .timestamp(timestamp)
                             .build();
     
-                            if(event != null){
+                            EventValidatorResult result = DISPUTE_VALIDATOR.validate(event);
+                            if(result.isValid()){
                                 disputes.add(event);
+                                System.out.println("DISPUTE processed successfully");
                                 continue;
                             }
+                            System.out.println("[ERROR] " + result.validationErrors());
                         }
                     }
                     invalidLines.add(line);

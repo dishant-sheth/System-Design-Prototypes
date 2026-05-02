@@ -1,30 +1,13 @@
 package src.models;
 
-import java.util.regex.Pattern;
-
 public class DisputeEvent extends Event {  
-    String reason_code;
+    public String reason_code;
 
     public DisputeEvent(Builder builder){
         this.txn_id = builder.txn_id;
         this.merchant_id = builder.merchant_id;
         this.timestamp = builder.timestamp;
         this.reason_code = builder.reason_code;
-    }
-
-    public boolean validateReasonCode(){
-        final boolean isValid = Pattern.matches("^RC[0-9]{3}$", reason_code);
-        if(!isValid) System.out.println("Invalid " + reason_code);
-        return isValid;
-    }
-
-    public boolean isValid(){
-        boolean isValid = true;
-        isValid &= validateTxnId();
-        isValid &= validateMerchantId();
-        isValid &= validateTimestamp();
-        isValid &= validateReasonCode();
-        return isValid;
     }
 
     public static class Builder {
@@ -59,9 +42,7 @@ public class DisputeEvent extends Event {
         }
 
         public DisputeEvent build(){
-            DisputeEvent event = new DisputeEvent(this);
-            if(event.isValid()) return event;
-            return null;
+            return new DisputeEvent(this);
         }
 
     }

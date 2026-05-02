@@ -23,7 +23,7 @@ public class Main {
                 logs.add(line);
             }   
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
 
         TransactionParser transactionParser = new TransactionParser();
