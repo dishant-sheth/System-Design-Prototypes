@@ -14,6 +14,11 @@ public class ChargeEvent extends Event {
         this.amount = builder.amount;
     }
 
+    @Override
+    public String toString(){
+        return this.timestamp + ", " + this.txn_id + ", " + this.merchant_id + ", " + this.amount.toPlainString() + this.currency; 
+    }
+
     public static class Builder {
         
         String txn_id;
