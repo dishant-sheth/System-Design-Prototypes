@@ -35,7 +35,7 @@ public class HighValueBurstRule implements IFraudRule {
         }
 
         final Deque<ChargeEvent> merchantWindow = merchantChargeMap.get(merchantId);
-        final LocalDateTime currTime = LocalDateTime.now();
+        final LocalDateTime currTime = LocalDateTime.parse(incomingChargeEvent.timestamp);
         // Empty the queue first.
         while(!merchantWindow.isEmpty()){
             final LocalDateTime windowDateTime = LocalDateTime.parse(merchantWindow.getFirst().timestamp);

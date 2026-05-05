@@ -33,7 +33,7 @@ public class HighVelocityFraudRule implements IFraudRule {
 
         final Deque<ChargeEvent> merchantWindow = merchantChargeMap.get(merchantId);
 
-        LocalDateTime currTime = LocalDateTime.now();
+        final LocalDateTime currTime = LocalDateTime.parse(incomingChargeEvent.timestamp);
         while(!merchantWindow.isEmpty()){
             LocalDateTime windowStartTime = LocalDateTime.parse(merchantWindow.getFirst().timestamp);
             
