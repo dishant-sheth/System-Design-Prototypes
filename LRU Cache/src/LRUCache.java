@@ -30,7 +30,7 @@ public class LRUCache<Key, Value> implements ILRUCache<Key, Value>{
     }
     
     @Override
-    public Value get(Key key){
+    public synchronized Value get(Key key){
         if(cacheMap.containsKey(key)){
             final DLLNode node = cacheMap.get(key);
 
@@ -55,7 +55,7 @@ public class LRUCache<Key, Value> implements ILRUCache<Key, Value>{
     }
 
     @Override
-    public void put(Key key, Value value, long ttlInMs){
+    public synchronized void put(Key key, Value value, long ttlInMs){
         
         // 1. Is there sufficient capacity for this put?
         if(this.size == this.capacity){
@@ -76,7 +76,7 @@ public class LRUCache<Key, Value> implements ILRUCache<Key, Value>{
                 }
             }
 
-            if(!hasExpiredKeys){
+            if(!hasExpiredKeys & tail != null){
                 final Key keyToDelete = (Key) tail.getKey();
                 DLLNode nodeToDelete = cacheMap.remove(keyToDelete);
                 expiryMap.get(nodeToDelete.getExpiryTime()).remove(keyToDelete);
@@ -125,8 +125,12 @@ public class LRUCache<Key, Value> implements ILRUCache<Key, Value>{
     }
 
     @Override
-    public void put(Key key, Value value){
+    public synchronized void put(Key key, Value value){
         this.put(key, value, NO_EXPIRY);
+    }
+
+    public synchronized int size() {
+        return this.size;
     }
 
     private void moveNodeToHead(DLLNode node){
