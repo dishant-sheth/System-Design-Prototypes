@@ -6,4 +6,6 @@ public interface ILFUCache<Key, Value> {
 
     void put(final Key key, final Value value);
 
+    int size();
+
 }

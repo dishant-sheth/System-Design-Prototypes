@@ -23,7 +23,12 @@ public class LFUCache<Key, Value> implements ILFUCache<Key, Value> {
     }
 
     @Override
-    public Value get(final Key key){
+    public int size(){
+        return this.currSize;
+    }
+
+    @Override
+    public synchronized Value get(final Key key){
         if(cacheMap.containsKey(key)){
             KVNode node = cacheMap.get(key);
 
@@ -35,7 +40,7 @@ public class LFUCache<Key, Value> implements ILFUCache<Key, Value> {
     }
 
     @Override
-    public void put(final Key key, final Value value) {
+    public synchronized void put(final Key key, final Value value) {
         // Check for capacity
         if(this.currSize == this.capacity){
             // Remove node with min frequency.
@@ -66,7 +71,7 @@ public class LFUCache<Key, Value> implements ILFUCache<Key, Value> {
             node.updateValue(value);
             this.adjustFrequency(node);
         }
-        System.out.println(cacheMap);
+        //System.out.println(cacheMap);
     }
 
     private void adjustFrequency(KVNode node){
