@@ -15,7 +15,8 @@ public class HourBasedFeeStrategy implements IFeeCalculatorStrategy {
 
     @Override
     public BigDecimal calculate(final Ticket ticket) {
-        int numOfHours = (int)Math.ceil((ticket.getExitTime() - ticket.getEntryTime())/(1000 * 60 * 1.0));
+        final int numOfMinutes = (int)Math.ceil((ticket.getExitTime() - ticket.getEntryTime())/(1000 * 60 * 1.0));
+        final int numOfHours = (int)Math.ceil(numOfMinutes/60.0);
         return costMap.get(ticket.getParkingSpot().getParkingSpotType()).multiply(new BigDecimal(numOfHours));
     }
 }

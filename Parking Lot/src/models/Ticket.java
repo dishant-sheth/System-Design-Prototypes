@@ -22,10 +22,11 @@ public class Ticket {
         this.parkingSpot = parkingSpot;
         this.isActive = true;
         this.entryTime = System.currentTimeMillis();
+        this.exitTime = this.entryTime + (long)(60 * 1000);
     }
 
     public void close(){
-        this.exitTime = System.currentTimeMillis();
+        this.exitTime = Math.max(this.exitTime, System.currentTimeMillis());
         this.isActive = false;
     }
 

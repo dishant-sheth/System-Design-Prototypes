@@ -52,6 +52,7 @@ public class ParkingLot {
                 if(parkingSpotMap.get(parkingSpotId).isAvailable()) break;
                 else { // Add at the end again. May be available for use later.
                     availabilityMap.get(spotType).add(parkingSpotId);
+                    parkingSpotId = "";
                 }
             }
             if(!parkingSpotId.isEmpty()) break;
