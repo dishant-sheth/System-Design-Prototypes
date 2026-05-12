@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.locks.ReentrantLock;
 import src.interfaces.IFeeCalculatorStrategy;
 import src.models.ParkingFloor;
 import src.models.ParkingSizeMapper;
@@ -20,6 +21,7 @@ public class ParkingLot {
     private final FeeCalculator feeCalculator;
     private final Map<String, ParkingSpot> parkingSpotMap;
     private final Map<ParkingSpotType, Queue<String>> availabilityMap;
+    private final Map<ParkingSpotType, ReentrantLock> lockMap;
 
     public ParkingLot(Builder builder){
         this.floors = builder.floors;
@@ -27,6 +29,10 @@ public class ParkingLot {
         this.parkingSpotMap = new HashMap<>();
         this.availabilityMap = new HashMap<>();
         buildAvailabilityMap();
+        this.lockMap = new HashMap<>();
+        for(ParkingSpotType spotType: ParkingSpotType.values()){
+            lockMap.put(spotType, new ReentrantLock());
+        }
     }
 
     private void buildAvailabilityMap(){
@@ -47,13 +53,20 @@ public class ParkingLot {
         final List<ParkingSpotType> validSpotTypes = ParkingSizeMapper.getValidSpotTypes(vehicle.vehicleType());
         String parkingSpotId = "";
         for(ParkingSpotType spotType: validSpotTypes){
-            while(!availabilityMap.get(spotType).isEmpty()){
-                parkingSpotId = availabilityMap.get(spotType).poll();
-                if(parkingSpotMap.get(parkingSpotId).isAvailable()) break;
-                else { // Add at the end again. May be available for use later.
-                    availabilityMap.get(spotType).add(parkingSpotId);
-                    parkingSpotId = "";
-                }
+            ReentrantLock lock = lockMap.get(spotType);
+            try {
+                lock.lock();
+                while(!availabilityMap.get(spotType).isEmpty()){
+                    parkingSpotId = availabilityMap.get(spotType).poll();
+                    if(parkingSpotMap.get(parkingSpotId).isAvailable()) break;
+                    else { // Add at the end again. May be available for use later.
+                        availabilityMap.get(spotType).add(parkingSpotId);
+                        parkingSpotId = "";
+                    }
+                }   
+            }
+            finally {
+                lock.unlock();
             }
             if(!parkingSpotId.isEmpty()) break;
         }
@@ -76,7 +89,14 @@ public class ParkingLot {
         // Mark ticket as closed.
         ticket.close();
         // Return parking spot to queue.
-        availabilityMap.get(ticket.getParkingSpot().getParkingSpotType()).add(ticket.getParkingSpot().getId());
+        ParkingSpotType spotType = ticket.getParkingSpot().getParkingSpotType();
+        ReentrantLock lock = lockMap.get(spotType);
+        try {
+            lock.lock();
+            availabilityMap.get(spotType).add(ticket.getParkingSpot().getId());
+        } finally {
+            lock.unlock();
+        }
 
         final BigDecimal fee = feeCalculator.calculate(ticket);
         System.out.println("Unparking vehicle " + ticket.getVehicle().vehicleId() + " from spot " + ticket.getParkingSpot().getId() + ". Total fee - " + fee.toPlainString());

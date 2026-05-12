@@ -1,8 +1,11 @@
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import src.HourBasedFeeStrategy;
 import src.ParkingLot;
 import src.models.ParkingFloor;
@@ -33,6 +36,12 @@ public class ParkingLotTest {
         testMultipleVehiclesSameType();
         testTicketIsActiveOnPark();
         testTicketIsInactiveAfterUnpark();
+        System.out.println("==== CONCURRENCY TEST ====");
+        testConcurrentParkSameSpotType();
+        testConcurrentParkDifferentSpotTypes();
+        testConcurrentParkAndUnpark();
+        testConcurrentUnparkSameTicketThrows();
+        testConcurrentLotFullException();
 
         System.out.println("\n========================================");
         System.out.printf("  Results: %d Passed | %d Failed%n", passed, failed);
@@ -225,6 +234,149 @@ public class ParkingLotTest {
         Ticket ticket = lot.park(car("C5"));
         lot.unpark(ticket);
         assertEqual("ticket is inactive", false, ticket.isActive());
+    }
+
+    static void testConcurrentParkSameSpotType() throws InterruptedException {
+        printHeader("Test 13: Concurrent Park - Same Spot Type No Double Booking");
+        ParkingLot lot = buildLot(1, 5, 0, 0); // 5 small spots
+        int threadCount = 10; // more threads than spots
+        List<Ticket> tickets = Collections.synchronizedList(new ArrayList<>());
+        AtomicBoolean exceptionThrown = new AtomicBoolean(false);
+    
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < threadCount; i++) {
+            String id = "B" + i;
+            threads.add(new Thread(() -> {
+                try {
+                    Ticket t = lot.park(bike(id));
+                    tickets.add(t);
+                } catch (ParkingLot.ParkingLotFullException e) {
+                    // expected for threads beyond capacity
+                } catch (Exception e) {
+                    exceptionThrown.set(true);
+                }
+            }));
+        }
+    
+        for (Thread t : threads) t.start();
+        for (Thread t : threads) t.join();
+    
+        // Exactly 5 tickets issued, all different spots
+        assertEqual("exactly 5 tickets issued", 5, tickets.size());
+        long uniqueSpots = tickets.stream().map(t -> t.getParkingSpot().getId()).distinct().count();
+        assertEqual("all spots are unique (no double booking)", 5L, uniqueSpots);
+        assertEqual("no unexpected exceptions", false, exceptionThrown.get());
+    }
+    
+    static void testConcurrentParkDifferentSpotTypes() throws InterruptedException {
+        printHeader("Test 14: Concurrent Park - Different Spot Types Run in Parallel");
+        ParkingLot lot = buildLot(1, 5, 5, 5);
+        AtomicBoolean exceptionThrown = new AtomicBoolean(false);
+        List<Ticket> tickets = Collections.synchronizedList(new ArrayList<>());
+    
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            String bid = "B" + i, cid = "C" + i, tid = "T" + i;
+            threads.add(new Thread(() -> {
+                try { tickets.add(lot.park(bike(bid))); } catch (Exception e) { exceptionThrown.set(true); }
+            }));
+            threads.add(new Thread(() -> {
+                try { tickets.add(lot.park(car(cid))); } catch (Exception e) { exceptionThrown.set(true); }
+            }));
+            threads.add(new Thread(() -> {
+                try { tickets.add(lot.park(truck(tid))); } catch (Exception e) { exceptionThrown.set(true); }
+            }));
+        }
+    
+        for (Thread t : threads) t.start();
+        for (Thread t : threads) t.join();
+    
+        assertEqual("all 15 vehicles parked", 15, tickets.size());
+        long uniqueSpots = tickets.stream().map(t -> t.getParkingSpot().getId()).distinct().count();
+        assertEqual("all spots unique across types", 15L, uniqueSpots);
+        assertEqual("no unexpected exceptions", false, exceptionThrown.get());
+    }
+    
+    static void testConcurrentParkAndUnpark() throws InterruptedException {
+        printHeader("Test 15: Concurrent Park and Unpark - No Deadlock or Corruption");
+        ParkingLot lot = buildLot(1, 10, 0, 0);
+        AtomicBoolean exceptionThrown = new AtomicBoolean(false);
+        List<Ticket> tickets = Collections.synchronizedList(new ArrayList<>());
+    
+        // First fill the lot
+        for (int i = 0; i < 10; i++) tickets.add(lot.park(bike("B" + i)));
+    
+        // Concurrent unparks and parks
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Ticket ticket = tickets.get(i);
+            String newId = "NB" + i;
+            threads.add(new Thread(() -> {
+                try {
+                    lot.unpark(ticket);
+                    lot.park(bike(newId));
+                } catch (Exception e) {
+                    exceptionThrown.set(true);
+                }
+            }));
+        }
+    
+        for (Thread t : threads) t.start();
+        for (Thread t : threads) t.join();
+    
+        assertEqual("no exceptions during concurrent park/unpark", false, exceptionThrown.get());
+    }
+    
+    static void testConcurrentUnparkSameTicketThrows() throws InterruptedException {
+        printHeader("Test 16: Concurrent Unpark Same Ticket - Only One Succeeds");
+        ParkingLot lot = buildLot(1, 5, 0, 0);
+        Ticket ticket = lot.park(bike("B_RACE"));
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failCount = new AtomicInteger(0);
+    
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            threads.add(new Thread(() -> {
+                try {
+                    lot.unpark(ticket);
+                    successCount.incrementAndGet();
+                } catch (ParkingLot.InvalidTicketException e) {
+                    failCount.incrementAndGet();
+                }
+            }));
+        }
+    
+        for (Thread t : threads) t.start();
+        for (Thread t : threads) t.join();
+    
+        assertEqual("exactly one unpark succeeds", 1, successCount.get());
+        assertEqual("remaining 4 get InvalidTicketException", 4, failCount.get());
+    }
+    
+    static void testConcurrentLotFullException() throws InterruptedException {
+        printHeader("Test 17: Concurrent Park - Lot Full Exception Thrown Correctly");
+        ParkingLot lot = buildLot(1, 3, 0, 0); // only 3 spots
+        AtomicInteger parked = new AtomicInteger(0);
+        AtomicInteger rejected = new AtomicInteger(0);
+    
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            String id = "B" + i;
+            threads.add(new Thread(() -> {
+                try {
+                    lot.park(bike(id));
+                    parked.incrementAndGet();
+                } catch (ParkingLot.ParkingLotFullException e) {
+                    rejected.incrementAndGet();
+                }
+            }));
+        }
+    
+        for (Thread t : threads) t.start();
+        for (Thread t : threads) t.join();
+    
+        assertEqual("exactly 3 parked", 3, parked.get());
+        assertEqual("exactly 7 rejected", 7, rejected.get());
     }
 
     // -----------------------------------------------
