@@ -48,6 +48,7 @@ public class ProductSelectedMachineState implements IMachineState {
     public void cancel(){
         System.out.println("Returning " + amountPaid);
         // Modify in change dispenser also.
+        this.vendingMachine.changeDispenser.returnChange(this.amountPaid);
         this.amountPaid = 0;
         this.vendingMachine.resetTransaction();
         this.vendingMachine.setMachineState(new IdleMachineState(this.vendingMachine));

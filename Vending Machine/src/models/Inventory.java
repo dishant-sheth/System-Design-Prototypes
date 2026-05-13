@@ -29,7 +29,10 @@ public class Inventory {
         }
         int newQuantity = inventoryMap.get(product.productId) - quantity;
         if(newQuantity > 0) inventoryMap.put(product.productId, newQuantity);
-        else if(newQuantity == 0) inventoryMap.remove(product.productId);
+        else if(newQuantity == 0){
+            inventoryMap.remove(product.productId);
+            productIdMap.remove(product.productId);
+        }
         else if(newQuantity < 0) throw new NotEnoughInventoryException();
     }
 
@@ -38,6 +41,9 @@ public class Inventory {
     }
 
     public boolean hasInventory(final String productId){
+        if(!inventoryMap.containsKey(productId)){
+            return false;
+        }
         return (inventoryMap.get(productId) > 0);
     }
 

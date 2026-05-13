@@ -1,7 +1,6 @@
 package src.models;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 public class Transaction {
     final Product product;
@@ -32,6 +31,6 @@ public class Transaction {
         return "<<" + ("Product Name: " + this.product.name + "\n") + 
             ("Amount Paid: " + this.amountPaid + "\n") + 
             ("Change Returned: " + this.changeReturned + "\n") + 
-            ("Timestamp: " + LocalDateTime.parse(strTimestamp).toString() + "\n");
+            ("Timestamp: " + strTimestamp + "\n");
     }
 }

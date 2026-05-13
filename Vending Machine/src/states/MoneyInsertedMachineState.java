@@ -30,13 +30,17 @@ public class MoneyInsertedMachineState implements IMachineState {
         final double changeToReturn = this.vendingMachine.currentTransaction.amountPaid - product.cost;
         this.vendingMachine.changeDispenser.returnChange(changeToReturn);
         System.out.println("Returning change = " + changeToReturn);
+        this.vendingMachine.currentTransaction.setChangeReturned(changeToReturn);
         this.vendingMachine.setMachineState(new DispensedMachineState(this.vendingMachine));
+        this.vendingMachine.setMachineState(new IdleMachineState(this.vendingMachine));
     }
 
     @Override
     public void cancel(){
-        System.out.println("Returning " + this.vendingMachine.currentTransaction.amountPaid);
+        final double amountPaid = this.vendingMachine.currentTransaction.amountPaid;
+        System.out.println("Returning " + amountPaid);
         // Modify in change dispenser also.
+        this.vendingMachine.changeDispenser.returnChange(amountPaid);
         this.vendingMachine.resetTransaction();
         this.vendingMachine.setMachineState(new IdleMachineState(this.vendingMachine));
     }

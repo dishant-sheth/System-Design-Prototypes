@@ -10,7 +10,6 @@ public class DispensedMachineState implements IMachineState {
         this.vendingMachine = vendingMachine;
         validation();
         this.vendingMachine.completeTransaction();
-        this.vendingMachine.setMachineState(new IdleMachineState(this.vendingMachine));
     }
 
     private void validation(){
