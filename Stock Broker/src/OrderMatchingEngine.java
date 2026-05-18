@@ -52,7 +52,13 @@ public class OrderMatchingEngine {
     }
 
     public OrderBookSnapshot getStockOrderBookSnapshot(final String stockSymbol){
-        return new OrderBookSnapshot(stockSymbol, new ArrayList<>(buyOrderBook.get(stockSymbol)),  new ArrayList<>(sellOrderBook.get(stockSymbol)));
+        final ReentrantLock stockLock = stockLockMap.get(stockSymbol);
+        try {
+            stockLock.lock();
+            return new OrderBookSnapshot(stockSymbol, new ArrayList<>(buyOrderBook.get(stockSymbol)),  new ArrayList<>(sellOrderBook.get(stockSymbol)));
+        } finally {
+            stockLock.unlock();
+        }
     }
 
     public List<Trade> placeOrder(Order order){

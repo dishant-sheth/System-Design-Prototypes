@@ -50,7 +50,7 @@ public class UserPortfolio implements IUserPortfolioManager {
 
     @Override
     public void updateReserveHoldings(String stockSymbol, Integer quantity){
-        reservedHoldings.put(stockSymbol, holdings.getOrDefault(stockSymbol, 0) + quantity);
+        reservedHoldings.put(stockSymbol, reservedHoldings.getOrDefault(stockSymbol, 0) + quantity);
     }
 
     @Override

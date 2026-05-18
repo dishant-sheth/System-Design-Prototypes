@@ -1,7 +1,7 @@
 package src;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import src.exceptions.UserAlreadyExistsException;
 import src.interfaces.IUserManager;
 import src.interfaces.IUserPortfolioManager;
@@ -11,7 +11,7 @@ public class UserRepository implements IUserManager {
 
     final Map<String, User> userMap;
     public UserRepository(){
-        this.userMap = new HashMap<>();
+        this.userMap = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -22,12 +22,11 @@ public class UserRepository implements IUserManager {
     @Override
     public void registerUser(String userId, String name, double initialBalance) {
         final User user = new User(userId, name);
+        user.getPortfolio().updateBalance(initialBalance);
+        
         if(userMap.putIfAbsent(userId, user) != null){
             throw new UserAlreadyExistsException(userId);
         }
-
-        user.getPortfolio().updateBalance(initialBalance);
-        userMap.put(userId, user);
     }
 
     @Override
